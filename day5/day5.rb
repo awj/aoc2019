@@ -16,10 +16,20 @@ module Day5
 
     # Operation that the IP currently points to
     def op
+      opcode % 100
+    end
+
+    def opcode
       sequence[ip]
     end
 
-    # Access memory at the provided location
+    def opflags
+      opcode / 100
+    end
+
+    # Access memory at the provided location. Use `idx` to determine
+    # if this is immediate or position mode, and return the
+    # appropriate value.
     def [](loc, idx)
       return loc if immediate?(idx)
 
@@ -31,24 +41,24 @@ module Day5
       sequence[loc] = val
     end
 
-    # Is the given argument index an immediate or parameter value?
+    # Is the given argument index an immediate or position value?
     #
     # Decided by "op flags", where a 1 indicates immediate and a 0
-    # indicates parameter.
+    # indicates position.
     #
     # These flags are to the *left* of the two digits representing an
     # operation, in an opcode.
     #
     # So, for the opcode "1001"
     # * the rightmost two digits are the operation ("01" => addition)
-    # * the next digit ("0") indicates the *first* argument is a parameter
+    # * the next digit ("0") indicates the *first* argument is position
     # * the last digit ("1") indicates the *second* argument is immediate
     def immediate?(arg_index)
-      flags = op / 100 # trim off operation
+      flags = opflags
       flag = nil
-      # 10.divmod(10) => [1, 0] => parameter mode
+      # 10.divmod(10) => [1, 0] => position mode
       # 1.divmod(10) => [0,1] => immediate mode
-      # 0.divmod(10) => [0,0] => all further/unspecified flags are parameter mode
+      # 0.divmod(10) => [0,0] => all unspecified flags are position mode
       arg_index.times do
         flags, flag = flags.divmod(10)
       end
@@ -60,7 +70,7 @@ module Day5
     # operation.
     def args(count)
       resp = sequence[ip+1, count]
-      puts ([op] + resp).inspect
+      puts ([opcode] + resp).inspect
       resp
     end
 
@@ -80,23 +90,22 @@ module Day5
 
     output = []
 
-    loop do
-      op = codesequence.op
-
-      result = interpret(op, codesequence, input, output)
-      break if result == :finish
+    begin
+      loop do
+        result = interpret(codesequence, input, output)
+        break if result == :finish
+      end
+    rescue StandardError
+      puts codesequence.inspect
+      raise
     end
-
     output
   end
 
-  def self.interpret(op, sequence, input, output)
-    case op % 100
+  def self.interpret(sequence, input, output)
+    case sequence.op % 100
     when 1
       a, b, dest = sequence.args(3)
-      a_v = sequence[a,1]
-      b_v = sequence[b,2]
-      puts "#{a_v} + #{b_v}"
       sequence[dest] = sequence[a,1] + sequence[b,2]
       sequence.increment(4)
       :continue
@@ -114,6 +123,40 @@ module Day5
       loc = sequence.args(1).first
       output << sequence[loc,1]
       sequence.increment(2)
+      :continue
+    when 5
+      loc, dest = sequence.args(2)
+      if sequence[loc,1] != 0
+        sequence.jump(sequence[dest,2])
+      else
+        sequence.increment(3)
+      end
+      :continue
+    when 6
+      loc, dest = sequence.args(2)
+      if sequence[loc,1] == 0
+        sequence.jump(sequence[dest,2])
+      else
+        sequence.increment(3)
+      end
+      :continue
+    when 7
+      a, b, dest = sequence.args(3)
+      if sequence[a,1] < sequence[b,2]
+        sequence[dest] = 1
+      else
+        sequence[dest] = 0
+      end
+      sequence.increment(4)
+      :continue
+    when 8
+      a, b, dest = sequence.args(3)
+      if sequence[a,1] == sequence[b,2]
+        sequence[dest] = 1
+      else
+        sequence[dest] = 0
+      end
+      sequence.increment(4)
       :continue
     when 99
       :finish
