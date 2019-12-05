@@ -43,7 +43,7 @@ module Day4
     # least one pair of digits is equal.
     parts.each_cons(2) do |a, b|
       paired = true if a == b
-      return false if b > a
+      return false if b < a
     end
 
     paired
