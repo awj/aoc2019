@@ -21,6 +21,7 @@ module Day6
 
     def ==(other)
       return false if other.nil?
+
       name == other.name
     end
 
@@ -28,10 +29,6 @@ module Day6
       return [] if orbiting.nil?
 
       orbiting.parents + [orbiting]
-    end
-
-    def all_orbiters
-      direct_orbits + direct_orbits.flat_map(&:all_orbiters)
     end
 
     def total_orbits(parents = 0)
@@ -59,7 +56,7 @@ module Day6
   end
 
   def root(orbits)
-    orbits.values.find {|o| o.orbiting.nil? }
+    orbits.values.find { |o| o.orbiting.nil? }
   end
 
   def common_root(o1_parents, o2_parents)
