@@ -10,7 +10,12 @@ module Day9
     attr_reader :sequence
 
     # Pointer (array index) to the current instruction in the set
-    attr_accessor :ip, :relative_base
+    attr_accessor :ip
+    # Base for `relative` instructions, which specify a memory
+    # location offset from this value
+    attr_accessor :relative_base
+    # Extended memory beyond initial sequence
+    attr_accessor :extended
 
     FLAG_CODES = {
       0 => :position,
@@ -22,6 +27,7 @@ module Day9
       @sequence = sequence.dup
       @ip = ip
       @relative_base = relative_base
+      @extended = Hash.new(0)
     end
 
     # Operation that the IP currently points to
@@ -43,14 +49,14 @@ module Day9
     def [](loc, idx)
       case flag(idx)
       when :immediate then loc
-      when :position then sequence[loc]
-      when :relative then sequence[loc + relative_base]
+      when :position then read(loc)
+      when :relative then read(loc + relative_base)
       end
     end
 
     # Write memory at the provided location
     def []=(loc, val)
-      sequence[loc] = val
+      write(loc, val)
     end
 
     # Determine the given argument indexes flag code
@@ -98,6 +104,22 @@ module Day9
 
     def adjust_base(adjustment)
       @relative_base += adjustment
+    end
+
+    def read(loc)
+      if loc < sequence.size
+        sequence[loc]
+      else
+        extended[loc]
+      end
+    end
+
+    def write(loc, val)
+      if loc < sequence.size
+        sequence[loc] = val
+      else
+        extended[loc] = val
+      end
     end
   end
 
