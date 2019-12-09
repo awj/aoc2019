@@ -9,6 +9,8 @@ module Intcode
     # The full set of instructions
     attr_reader :sequence
 
+    attr_reader :debug
+
     # Pointer (array index) to the current instruction in the set
     attr_accessor :ip
     # Base for `relative` instructions, which specify a memory
@@ -23,11 +25,12 @@ module Intcode
       2 => :relative
     }.freeze
 
-    def initialize(sequence, ip: 0, relative_base: 0)
+    def initialize(sequence, ip: 0, relative_base: 0, debug: false)
       @sequence = sequence.dup
       @ip = ip
       @relative_base = relative_base
       @extended = Hash.new(0)
+      @debug = debug
     end
 
     # Operation that the IP currently points to
@@ -44,8 +47,7 @@ module Intcode
     end
 
     # Access memory at the provided location. Use `idx` to determine
-    # if this is immediate or position mode, and return the
-    # appropriate value.
+    # the mode, and return the appropriate value.
     def [](loc, idx)
       case flag(idx)
       when :immediate then loc
@@ -54,9 +56,15 @@ module Intcode
       end
     end
 
-    # Write memory at the provided location
-    def []=(loc, val)
-      write(loc, val)
+    # Write memory at the provided location. Use `idx` to determine
+    # the mode
+    def []=(loc, idx, val)
+      case flag(idx)
+      when :position then write(loc, val)
+      when :relative then write(loc + relative_base, val)
+      else
+        raise "flag #{flag(idx)} for assignment"
+      end
     end
 
     # Determine the given argument indexes flag code
@@ -87,8 +95,10 @@ module Intcode
     # Read the provided number of instruction args. Omits the current
     # operation.
     def args(count)
-      resp = sequence[ip+1, count]
-      puts ([opcode] + resp).inspect
+      resp = count.times.map { |i| read(ip + 1 + i) }
+
+      puts(([opcode] + resp).inspect) if debug
+
       resp
     end
 
@@ -151,18 +161,18 @@ module Intcode
   end
 
   def self.interpret(sequence, input, &output)
-    case sequence.op % 100
+    case sequence.op
     when 1 # add
       a, b, dest = sequence.args(3)
-      sequence[dest] = sequence[a,1] + sequence[b,2]
+      sequence[dest, 3] = sequence[a,1] + sequence[b,2]
       sequence.increment(4)
     when 2 # mul
       a, b, dest = sequence.args(3)
-      sequence[dest] = sequence[a,1] * sequence[b,2]
+      sequence[dest, 3] = sequence[a,1] * sequence[b,2]
       sequence.increment(4)
     when 3 # input
       dest = sequence.args(1).first
-      sequence[dest] = input.shift
+      sequence[dest, 1] = input.shift
       sequence.increment(2)
     when 4 # output
       loc = sequence.args(1).first
@@ -185,22 +195,23 @@ module Intcode
     when 7 # lt
       a, b, dest = sequence.args(3)
       if sequence[a,1] < sequence[b,2]
-        sequence[dest] = 1
+        sequence[dest, 3] = 1
       else
-        sequence[dest] = 0
+        sequence[dest, 3] = 0
       end
       sequence.increment(4)
     when 8 # eql
       a, b, dest = sequence.args(3)
       if sequence[a,1] == sequence[b,2]
-        sequence[dest] = 1
+        sequence[dest, 3] = 1
       else
-        sequence[dest] = 0
+        sequence[dest, 3] = 0
       end
       sequence.increment(4)
     when 9 # change relative base
-      incr = sequence.args[1].first
-      sequence.adjust_base(incr)
+      incr = sequence.args(1).first
+      sequence.adjust_base(sequence[incr,1])
+      sequence.increment(2)
     when 99 # halt
       raise Halt
     else
