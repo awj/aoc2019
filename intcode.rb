@@ -59,6 +59,7 @@ module Intcode
     # Write memory at the provided location. Use `idx` to determine
     # the mode
     def []=(loc, idx, val)
+      puts "#{ip} <- #{val}" if debug
       case flag(idx)
       when :position then write(loc, val)
       when :relative then write(loc + relative_base, val)
@@ -144,9 +145,10 @@ module Intcode
 
     # @param [Array<Integer>] codes representing the program data
     # @param [Array<Integer>] input to the execution
-    def initialize(codes, input)
-      @instructions = Instructions.new(codes)
+    def initialize(codes, input, debug: false)
+      @instructions = Instructions.new(codes, debug: debug)
       @input = input
+      @debug = debug
     end
 
     # @yields [Integer] output from the program
@@ -155,6 +157,7 @@ module Intcode
         instructions,
         input
       ) do |output|
+        puts "output #{output}" if @debug
         yield output
       end
     end
@@ -172,7 +175,7 @@ module Intcode
       sequence.increment(4)
     when 3 # input
       dest = sequence.args(1).first
-      sequence[dest, 1] = input.shift
+      sequence[dest, 1] = input.call
       sequence.increment(2)
     when 4 # output
       loc = sequence.args(1).first
