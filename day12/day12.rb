@@ -169,6 +169,6 @@ module Day12
       break if x_cycles != -1 && y_cycles != -1 && z_cycles != -1
     end
 
-    [x_cycles, y_cycles, z_cycles]
+    [x_cycles, y_cycles, z_cycles].reduce(&:lcm)
   end
 end
