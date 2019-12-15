@@ -10,6 +10,11 @@ module Day14
     parse_dependencies File.read(file).chomp.split("\n")
   end
 
+  # Returned data looks like this:
+  # {
+  #   "CHEM1" => {yield: 1, needs: [ [1, "CHEM2"], ...]},
+  #   "CHEM2" => {yield: 5, needs: [ ... ]}
+  # }
   def parse_dependencies(input)
     deps = {}
     input.each do |line|
@@ -43,6 +48,14 @@ module Day14
     end
   end
 
+  # Simulate running a stock of chemicals while trying to produce the
+  # amount of needed fuel. Loop through rounds of production, each
+  # time winding up with "negative stock" where we used more of a
+  # chemical than we had in a reaction. Produce that stock on the next
+  # loop.
+  #
+  # "Leftover" chemicals that went unused from their production volume
+  # are stored in the stock for later use.
   def fuel_ore_cost(input, needed_fuel: 1)
     stock = Hash.new(0)
 
@@ -63,7 +76,7 @@ module Day14
         stock[chem] += mul * yields
         # remove `mul` * each requirement from the stock. If this
         # drops the supply of that chemical below 0, we'll generate it
-        # next time too.
+        # next time through.
         deps.each do |req|
           amt, c = req
           stock[c] -= amt * mul
