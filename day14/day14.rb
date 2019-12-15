@@ -27,6 +27,22 @@ module Day14
     deps
   end
 
+  # Attempt to find the maximum fuel we can generate from a given
+  # quantity of ore, using binary search on a range from 0 to
+  # max_fuel_cutoff fuel.
+  #
+  # Printed output is useful, because it seems to usually find the one
+  # just _past_ the value we want...
+  def max_fuel(input, max_ore, max_fuel_cutoff: 10_000_000)
+    (0..max_fuel_cutoff).bsearch do |x|
+
+      ore_cost = fuel_ore_cost(input, needed_fuel: x)
+      puts "#{x}: #{ore_cost}"
+
+      max_ore < ore_cost
+    end
+  end
+
   def fuel_ore_cost(input, needed_fuel: 1)
     stock = Hash.new(0)
 
